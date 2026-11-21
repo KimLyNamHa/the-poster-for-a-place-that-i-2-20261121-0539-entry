@@ -6,6 +6,10 @@ black-sand shore at golden dusk. The base artwork is embedded below as
 base64 (WebP, generated once, no network at run time); the place name is
 drawn in precise PIL typography — the only text in the picture.
 
+The bold font ships with the entry (fonts/DejaVuSans-Bold.ttf, DejaVu is
+freely licensed) because the grader's sandbox image has no system fonts;
+the system path is kept as a fallback and load_default() as a last resort.
+
 Deterministic: fixed sizes, fixed colours, no randomness, no clock.
 Writes /output/entry.png (1024x1024 PNG).
 """
@@ -20,14 +24,31 @@ BASE64_DATA = "UklGRlxrBwBXRUJQVlA4WAoAAAAEAAAAPwYAPwYAVlA4IDJpBwBwyRSdASpABkAGP
 
 PLACE_NAME = "SOLMARA"
 SIZE = 1024
-OUT_PATH = "/output/entry.png"
+# The grader sets MAKEFUN_OUTPUT_DIR; default to /output like before.
+OUT_PATH = os.path.join(
+    os.environ.get("MAKEFUN_OUTPUT_DIR", "/output"), "entry.png")
 
-FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+# Bold face: bundled copy first, system DejaVu second, default last.
+FONT_BUNDLED = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "fonts", "DejaVuSans-Bold.ttf")
+FONT_SYSTEM = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 # Warm ivory for the name; deep teal-black for its soft shadow.
 NAME_FILL = (255, 243, 214, 255)
 SHADOW_FILL = (18, 38, 40, 170)
 RULE_FILL = (255, 205, 130, 255)
+
+
+def load_font(size: int) -> ImageFont.FreeTypeFont:
+    """Load the bold face, preferring the copy bundled with the entry."""
+    for path in (FONT_BUNDLED, FONT_SYSTEM):
+        if os.path.isfile(path):
+            try:
+                return ImageFont.truetype(path, size)
+            except OSError:
+                continue
+    return ImageFont.load_default(size=size)
 
 
 def load_base() -> Image.Image:
@@ -56,7 +77,7 @@ def main() -> None:
     img = load_base().convert("RGBA")
     draw = ImageDraw.Draw(img)
 
-    font = ImageFont.truetype(FONT_BOLD, 118)
+    font = load_font(118)
     tracking = 26
     name_y = 872
 
